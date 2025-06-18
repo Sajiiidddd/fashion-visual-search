@@ -17,6 +17,7 @@ A content-based fashion image similarity search system that helps users find vis
 ---
 
 ## Project Structure
+```bash
 fashion_visual_search/
 │
 ├── app/
@@ -34,6 +35,7 @@ fashion_visual_search/
 │
 ├── README.md
 └── requirements.txt
+```
 
 
 ---
@@ -88,10 +90,13 @@ Accepts image URL or file.
 Extracts query features → scales → PCA → FAISS search → top-K results.
 
 ## Tech Stack
-FastAPI – API framework
-FAISS – Fast Approximate Nearest Neighbors
-Pandas / NumPy / Scikit-learn – Data processing
-Pillow / Requests / Torch / torchvision – Image processing & model loading
+**FastAPI** – API framework
+
+**FAISS** – Fast Approximate Nearest Neighbors
+
+**Pandas / NumPy / Scikit-learn** – Data processing
+
+**Pillow / Requests / Torch / torchvision** – Image processing & model loading
 
 ## License
 MIT License © 2025 Sajiiidddd
