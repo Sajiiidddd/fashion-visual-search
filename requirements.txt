@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+torch
+torchvision
+pandas
+scikit-learn
+faiss-cpu
+pillow
+requests
+multipart

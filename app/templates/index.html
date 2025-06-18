@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fashion Visual Search</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f4f8;
+      padding: 40px 20px;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 720px;
+      width: 100%;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+      text-align: center;
+    }
+
+    h1 { color: #222; margin-bottom: 10px; }
+    p  { color: #555; margin-bottom: 20px; }
+
+    input[type="text"] {
+      width: 90%;
+      max-width: 400px;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 10px 16px;
+      margin: 5px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover { background: #0056b3; }
+
+    .drop-zone {
+      margin: 20px auto 0;
+      padding: 20px;
+      border: 2px dashed #007bff;
+      background-color: #f9fbfd;
+      border-radius: 10px;
+      max-width: 400px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .drop-zone.dragover { background-color: #e6f0ff; }
+
+    #input-preview {
+      display: none;
+      width: 150px;
+      margin-top: 20px;
+      border-radius: 10px;
+      border: 2px solid #ccc;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .result-images {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    .result-images img {
+      width: 140px;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+      transition: transform 0.3s ease;
+    }
+
+    .result-images img:hover { transform: scale(1.05); }
+
+    .spinner {
+      width: 30px;
+      height: 30px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #007bff;
+      border-radius: 50%;
+      margin: 30px auto;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #toast {
+      display: none;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: #e74c3c;
+      color: white;
+      padding: 15px 20px;
+      font-weight: bold;
+      border-radius: 5px;
+      z-index: 1000;
+    }
+
+    @media (max-width: 600px) {
+      .drop-zone, input[type="text"] { width: 100%; }
+      .result-images img { width: 100px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>Fashion Visual Search</h1>
+    <p>Paste an image URL or upload a photo</p>
+
+    <input type="text" id="imageUrl" placeholder="Enter image URL" />
+    <br />
+    <button onclick="searchFromUrl()">Search URL</button>
+    <button onclick="triggerUpload()">Upload / Camera</button>
+
+    <div id="drop-zone" class="drop-zone" aria-label="Image upload area">
+      Drag & Drop or Click to Upload Image
+    </div>
+
+    <img id="input-preview" src="" alt="Preview" />
+    <div id="results" class="result-images"></div>
+  </main>
+
+  <div id="toast" role="alert"></div>
+
+  <script>
+    const dropZone = document.getElementById("drop-zone");
+    const preview = document.getElementById("input-preview");
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 3000);
+    }
+
+    function showSpinner() {
+      document.getElementById("results").innerHTML =
+        '<div class="spinner" aria-label="Loading..."></div>';
+    }
+
+    function showResults(images) {
+      const container = document.getElementById("results");
+      container.innerHTML = images?.length
+        ? images.map(img => `<img src="${img}" alt="Result Image" />`).join("")
+        : "<p>No similar images found.</p>";
+    }
+
+    async function searchFromUrl() {
+      const url = document.getElementById("imageUrl").value.trim();
+      if (!url) return showToast("Please enter an image URL.");
+
+      preview.src = url;
+      preview.style.display = "block";
+      showSpinner();
+
+      try {
+        const response = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_url: url }),
+        });
+
+        const data = await response.json();
+        response.ok
+          ? showResults(data.similar_images || data.results)
+          : showToast(data.detail || "Search failed.");
+      } catch {
+        showToast("Search request failed.");
+      }
+    }
+
+    async function uploadFile(file) {
+      if (!file || !file.type.startsWith("image/"))
+        return showToast("Only image files are allowed.");
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        preview.src = reader.result;
+        preview.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+
+      showSpinner();
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const response = await fetch("/api/upload-file", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await response.json();
+        response.ok
+          ? showResults(data.similar_images)
+          : showToast(data.detail || "Upload failed.");
+      } catch {
+        showToast("Upload request failed.");
+      }
+    }
+
+    function triggerUpload() {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.capture = "environment";
+      input.onchange = e => uploadFile(e.target.files[0]);
+      input.click();
+    }
+
+    dropZone.addEventListener("click", triggerUpload);
+
+    dropZone.addEventListener("dragover", e => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () =>
+      dropZone.classList.remove("dragover")
+    );
+
+    dropZone.addEventListener("drop", e => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      uploadFile(e.dataTransfer.files[0]);
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
